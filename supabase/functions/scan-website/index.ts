@@ -1,3 +1,5 @@
+// deno-lint-ignore-file
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -25,9 +27,9 @@ async function performSecurityScan(url: string): Promise<SecurityCheck[]> {
     // Fetch the target URL
     const response = await fetch(url, { 
       redirect: 'follow',
-      headers: {
-        'User-Agent': 'SecureEval Security Scanner'
-      }
+    headers: {
+  'User-Agent': 'Secural Security Scanner'
+    }
     });
     
     const headers = response.headers;

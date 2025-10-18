@@ -64,7 +64,7 @@ const Auth = () => {
               <Shield className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">SecureEval</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Secural</h1>
           <p className="mt-2 text-muted-foreground">Web Security Vulnerability Scanner</p>
         </div>
 

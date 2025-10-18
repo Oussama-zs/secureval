@@ -22,7 +22,7 @@ const Dashboard = () => {
               <Shield className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">SecureEval</h1>
+              <h1 className="text-2xl font-bold">Secural</h1>
               <p className="text-sm text-muted-foreground">Web Security Scanner</p>
             </div>
           </div>

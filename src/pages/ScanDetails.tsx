@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Download, Shield, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Scan {
   id: string;
@@ -89,9 +91,122 @@ const ScanDetails = () => {
   };
 
   const downloadPDF = () => {
-    // In a real application, you would generate a PDF here
-    // For now, we'll just show a message
-    toast.info('PDF generation would be implemented here with a library like jsPDF or via an edge function');
+    try {
+      if (!scan) return;
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 40;
+      let y = margin;
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+  doc.text('Secural - Web Security Scan Report', margin, y);
+      y += 24;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.text(`Target: ${scan.target_url}`, margin, y);
+      y += 18;
+      doc.text(`Scan date: ${format(new Date(scan.created_at), 'PPpp')}` + (scan.completed_at ? `  •  Completed: ${format(new Date(scan.completed_at), 'PPpp')}` : ''), margin, y);
+      y += 24;
+
+      // Summary counters
+      const summaryLines = [
+        `Total: ${scan.total_vulnerabilities}`,
+        `Critical: ${scan.critical_count}`,
+        `High: ${scan.high_count}`,
+        `Medium: ${scan.medium_count}`,
+        `Low: ${scan.low_count}`,
+      ];
+      doc.text(summaryLines.join('   |   '), margin, y);
+      y += 24;
+
+      // Vulnerabilities table
+      const columns = [
+        { header: 'Title', dataKey: 'title' },
+        { header: 'Severity', dataKey: 'severity' },
+        { header: 'Type', dataKey: 'vulnerability_type' },
+        { header: 'CVSS', dataKey: 'cvss_score' },
+        { header: 'CWE', dataKey: 'cwe_id' },
+        { header: 'OWASP', dataKey: 'owasp_category' },
+      ];
+
+      const rows = vulnerabilities.map(v => ({
+        title: v.title || '-',
+        severity: (v.severity || '-').toUpperCase(),
+        vulnerability_type: v.vulnerability_type || '-',
+        cvss_score: v.cvss_score ?? '-',
+        cwe_id: v.cwe_id ?? '-',
+        owasp_category: v.owasp_category ?? '-',
+      }));
+
+      autoTable(doc, {
+        startY: y,
+        head: [columns.map(c => c.header)],
+        body: rows.map(r => columns.map(c => String((r as any)[c.dataKey] ?? '-'))),
+        styles: { fontSize: 9, cellPadding: 6, overflow: 'linebreak' },
+        headStyles: { fillColor: [28, 28, 30] },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { left: margin, right: margin },
+      });
+
+      let currentY = (doc as any).lastAutoTable?.finalY ?? y;
+      currentY += 24;
+
+      // Detailed section (optional): include description and recommendation
+      if (vulnerabilities.length) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        if (currentY > doc.internal.pageSize.getHeight() - 120) {
+          doc.addPage();
+          currentY = margin;
+        }
+        doc.text('Details', margin, currentY);
+        currentY += 16;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        vulnerabilities.forEach((v, idx) => {
+          const title = `${idx + 1}. ${v.title} [${(v.severity || '').toUpperCase()}]`;
+          const details: string[] = [];
+          if (v.description) details.push(`Description: ${v.description}`);
+          if (v.affected_url) details.push(`Affected URL: ${v.affected_url}`);
+          if (v.recommendation) details.push(`Recommendation: ${v.recommendation}`);
+
+          const lines = [title, ...details];
+          lines.forEach((line, i) => {
+            const wrapped = doc.splitTextToSize(line, doc.internal.pageSize.getWidth() - margin * 2);
+            wrapped.forEach(wl => {
+              if (currentY > doc.internal.pageSize.getHeight() - margin) {
+                doc.addPage();
+                currentY = margin;
+              }
+              doc.text(wl, margin, currentY);
+              currentY += 14;
+            });
+            if (i === lines.length - 1) currentY += 8;
+          });
+        });
+      }
+
+      const urlForName = (() => {
+        try {
+          const u = new URL(scan.target_url);
+          return u.hostname.replace(/[^a-zA-Z0-9.-]/g, '_');
+        } catch {
+          return scan.target_url.replace(/[^a-zA-Z0-9.-]/g, '_');
+        }
+      })();
+      const ts = format(new Date(scan.created_at), 'yyyyMMdd_HHmm');
+  const fileName = `Secural_scan_${urlForName}_${ts}.pdf`;
+
+      doc.save(fileName);
+      toast.success('PDF report downloaded');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to generate PDF');
+    }
   };
 
   if (loading) {
